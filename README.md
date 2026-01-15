@@ -55,7 +55,7 @@ draftly-v1/
 
 ## Draftly: High-Level System Architecture
 
-#### This diagram represents how your components communicate, specifically highlighting the "Human-in-the-Loop" flow and the database caching layer we implemented.
+#### This diagram represents how components communicate, specifically highlighting the "Human-in-the-Loop" flow and the database caching layer we implemented.
 
 ##### Key Components Explained
 1. ###### Client Layer (Bootstrap + Vanilla JS)
