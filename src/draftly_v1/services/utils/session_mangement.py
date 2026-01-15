@@ -48,7 +48,7 @@ def create_user_session(user_email: str):
         rawString = datetime.now().isoformat() + "-" + user_email + "-" + os.urandom(16).hex()
 
         sessionToken = rawString.encode('utf-8').hex()
-        expiration_time = datetime.now() + timedelta(hours=5) # 5 hours session
+        expiration_time = datetime.now() + timedelta(hours=2) # 2 hours session
     
         # Check if session already exists for this user
         existing_session = db.query(UserSession).filter_by(user_email=user_email).first()
