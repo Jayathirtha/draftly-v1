@@ -55,6 +55,8 @@ draftly-v1/
 
 ## Draftly: High-Level System Architecture
 
+![alt text](image.png)
+
 #### This diagram represents how components communicate, specifically highlighting the "Human-in-the-Loop" flow and the database caching layer we implemented.
 
 ##### Key Components Explained
@@ -87,7 +89,7 @@ LLM/AI Service (GROQ): Processes the thread history to generate context-aware re
 
 ###### Asynchronous: Asynchronous background tasks to keep the UI snappy.
 
-![alt text](image.png)
+
 
 ## Draftly flow:
 
@@ -158,17 +160,7 @@ tests/
    cd draftly-v1
    ```
 
-2. ## Setting Up OAuth Credentials
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing
-3. Enable Gmail API
-4. Create OAuth 2.0 credentials
-5. Download the JSON file
-6. Place it in `resources/client_secret_YOUR_PROJECT.json`
-7. Run: `docker-compose up -d`
-
-3. **Configure environment variables**
+2. **Configure environment variables**
    
    Create a `.env` file in the project root:
    ```env
@@ -184,6 +176,20 @@ tests/
    POSTGRES_DB=draftly 
     # note: db should be created manually
    ```
+
+3. ## Setting Up OAuth Credentials  and running app
+
+	1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+	2. Create a new project or select existing
+	3. Enable Gmail API
+	4. Create OAuth 2.0 credentials
+	5. Download the JSON file
+	6. Place it in `resources/client_secret_YOUR_PROJECT.json`
+	7. Create a `.env` file in the project root
+	8. Run: `docker-compose up -d`
+ 	9. open url: http://localhost:8000/login to use the app. 
+
+
 
 4. **Build and run with Docker Compose**
    ```bash
@@ -202,8 +208,7 @@ tests/
 
 5. **Access the application**
    - Frontend: http://localhost:8000/ui
-   - API Documentation: http://localhost:8000/docs
-   - Login: http://localhost:8000/ui/login.html
+   - Login: http://localhost:8000/ui/login
 
 ### Docker Commands Reference
 
@@ -249,7 +254,7 @@ docker-compose build --no-cache
 docker-compose up -d
 ```
 
-## 📝 API Endpoints
+## API Endpoints
 
 ### Authentication
 - `GET /auth/login` - Initiate Google OAuth flow
@@ -261,18 +266,16 @@ docker-compose up -d
 - `POST /email/regenerate_draft` - Regenerate draft with different style
 - `POST /email/send` - Send email draft
 
-## 🔒 Security Notes
+## Security Notes
 
 - Google OAuth credentials are **NOT** included in the Docker image
 - They are mounted as a read-only volume at runtime
-- Never commit `.env` or `client_secret*.json` to version control
-- See [SECURITY.md](SECURITY.md) for detailed security practices
 
-## 📄 License
+## License
 
 MIT License - See [LICENSE.txt](LICENSE.txt)
 
-## 👥 Author
+##  Author
 
 Jayathirtha - [GitHub Profile](https://github.com/Jayathirtha)
 
