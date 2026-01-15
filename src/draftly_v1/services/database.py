@@ -1,35 +1,58 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from datetime import datetime, timezone
-from pathlib import Path
 import json
 import os
 import logging
-from draftly_v1.model.DraftLog import DraftLog, get_db
-from draftly_v1.model.User import User  # Local import to avoid cyclic issues
+from sqlalchemy import create_engine
+from datetime import datetime, timezone
+from sqlalchemy.orm import sessionmaker, Session
+from pathlib import Path
+from draftly_v1.model.base import Base
+from draftly_v1.model.User import User
+from draftly_v1.model.UserSession import UserSession
+from draftly_v1.model.DraftLog import DraftLog
 
 _logger = logging.getLogger(__name__)
 
-Base = declarative_base()
+
+DATABASE_URL=os.getenv("DATABASE_URL")
 
 
-
-
-# Database setup
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./draftly.db")
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {})
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base.metadata.create_all(bind=engine)
 
 def get_db_session() -> Session:
     """Get a database session"""
+    
     db = SessionLocal()
     try:
         return db
     finally:
         pass  # Session will be closed by caller
 
-def get_creds_from_db(user_id: int) -> dict:
+def get_user_by_email(email: str) -> User | None:
+    """
+    Retrieve user from the database by email.
+    
+    Args:
+        email (str): The user's email address
+        
+    Returns:
+        User | None: User object if found, None otherwise
+    """
+    db = get_db_session()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        return user
+    except Exception as e:
+        _logger.error(f"Error retrieving user by email {email}: {str(e)}", exc_info=True)
+        raise
+    finally:
+        db.close()
+
+def get_creds_from_db(email: str,) -> dict:
     
     """
     Retrieve user credentials from the database and return in format for Google OAuth Credentials.
@@ -45,10 +68,10 @@ def get_creds_from_db(user_id: int) -> dict:
     """
     db = get_db_session()
     try:
-        user = db.query(User).filter(User.id == user_id).first()
+        user = db.query(User).filter(User.email == email).first()
         
         if not user:
-            raise ValueError(f"User with id {user_id} not found in database")
+            raise ValueError(f"User with email {email} not found in database")
         
         # Get client secrets from the JSON file
         BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
@@ -61,7 +84,6 @@ def get_creds_from_db(user_id: int) -> dict:
             client_secrets = json.load(f)
         
         # Extract client_id and client_secret from the JSON structure
-        # Google OAuth JSON typically has structure: {"web": {"client_id": "...", "client_secret": "..."}}
         if "web" in client_secrets:
             client_id = client_secrets["web"]["client_id"]
             client_secret = client_secrets["web"]["client_secret"]
@@ -92,48 +114,196 @@ def get_creds_from_db(user_id: int) -> dict:
         return creds_dict
         
     except Exception as e:
-        _logger.error(f"Error retrieving credentials from DB for user {user_id}: {str(e)}", exc_info=True)
+        _logger.error(f"Error retrieving credentials from DB for user {email}: {str(e)}", exc_info=True)
         raise
     finally:
         db.close() 
 
-
-
-def store_user(db_session, user_id, email, refresh_token, style_profile):
-    """
-    Store a new user or update existing user in the database.
-    """
-   
-    user = db_session.query(User).filter(User.id == user_id).first()
-    if user:
-        # Update fields if user exists
-        user.email = email
-        user.refresh_token = refresh_token
-        if style_profile:
-            user.style_profile = style_profile
-    else:
-        user = User(id=user_id, email=email, refresh_token=refresh_token, style_profile=style_profile)
-        db_session.add(user)
-    db_session.commit()
-    return user
-
-def log_draft_in_db(user_id, thread_id, status, draft_id=None):
-    """
-    Store a draft log in the database.
-    """
-    
-    db = next(get_db())
+def store_user(email: str, refresh_token: str, style_profile: str = None) -> User:
+    """Create or update a user record."""
+    session = get_db_session()
     try:
-        draft_log = DraftLog(
-            user_id=user_id,
-            thread_id=thread_id,
-            status=status,
-            draft_id=draft_id
-        )
-        db.add(draft_log)
-        db.commit()
-        return draft_log
+        user = session.query(User).filter(User.email == email).first()
+        if user:
+            user.email = email
+            user.refresh_token = refresh_token
+            if style_profile is not None:
+                user.style_profile = style_profile
+        else:
+            user = User(
+                email=email,
+                refresh_token=refresh_token,
+                style_profile=style_profile
+            )
+            session.add(user)
+
+        session.commit()
+        session.refresh(user)
+        return user
+    except Exception:
+        session.rollback()
+        raise
     finally:
-        db.close()
+        session.close()
 
 
+
+def update_user_preferences(user_id: int, preferences: dict) -> bool:
+    """Update user style_profile with recent style preference."""
+    session = get_db_session()
+    try:
+        user = session.query(User).filter(User.id == user_id).first()
+        if user:
+            # Update style_profile with user_style from preferences
+            if "user_style" in preferences:
+                user.style_profile = preferences["user_style"]
+                session.commit()
+                _logger.info(f"Style profile updated for user {user_id}: {preferences['user_style']}")
+                return True
+        return False
+    except Exception as e:
+        session.rollback()
+        _logger.error(f"Error updating style profile: {str(e)}")
+        return False
+    finally:
+        session.close()
+
+
+def get_user_preferences(user_id: int) -> dict:
+    """Get user style preferences from style_profile."""
+    session = get_db_session()
+    try:
+        user = session.query(User).filter(User.id == user_id).first()
+        if user and user.style_profile:
+            return {"user_style": user.style_profile}
+        return {}
+    except Exception as e:
+        _logger.error(f"Error retrieving preferences: {str(e)}")
+        return {}
+    finally:
+        session.close()
+
+
+def save_thread_context(user_email: str, thread_id: str, thread_context: list, draft_content: str = None) -> bool:
+    """Save email thread context to database for future reference."""
+    session = get_db_session()
+    try:
+        user = session.query(User).filter(User.email == user_email).first()
+        if not user:
+            _logger.error(f"User not found: {user_email}")
+            return False
+        
+        # Check if thread context already exists
+        draft = session.query(DraftLog).filter(
+            DraftLog.user_id == user.id,
+            DraftLog.thread_id == thread_id,
+            DraftLog.status == 'DRAFT'
+        ).first()
+        
+        # Extract recipient email (the one that's NOT the user's email)
+        recipient_email = ""
+        subject = ""
+        if thread_context and len(thread_context) > 0:
+            initial_msg = thread_context[-1]
+            from_email = initial_msg.get("from", "")
+            to_email = initial_msg.get("to", "")
+            
+            # Select the email that's not the user's email
+            if from_email and from_email.lower() != user_email.lower():
+                recipient_email = from_email
+            elif to_email and to_email.lower() != user_email.lower():
+                recipient_email = to_email
+            
+            subject = initial_msg.get("subject", "")
+        
+        if draft and draft.thread_context:
+            draft.thread_context = thread_context
+            if recipient_email:
+                draft.recipient_email = recipient_email
+            if subject:
+                draft.subject = subject
+            draft.last_updated_at = datetime.now(timezone.utc)
+            draft.draft_content = draft_content if draft_content else ""
+        else:
+            # Create new draft log entry with thread context
+            draft = DraftLog(
+                user_id=user.id,
+                thread_id=thread_id,
+                recipient_email=recipient_email,
+                subject=subject,
+                draft_content= draft_content if draft_content else "",
+                thread_context=thread_context,
+                status='DRAFT'
+            )
+            session.add(draft)
+        
+        session.commit()
+        _logger.info(f"Thread context saved for thread {thread_id}")
+        return True
+    except Exception as e:
+        session.rollback()
+        _logger.error(f"Error saving thread context: {str(e)}")
+        return False
+    finally:
+        session.close()
+
+
+def delete_thread_context(user_email: str, thread_id: str, gmail_draft_id: str) -> bool:
+    """Delete thread context from database after email is sent."""
+    session = get_db_session()
+    try:
+        user = session.query(User).filter(User.email == user_email).first()
+        if not user:
+            return False
+        
+        # Find and update draft to clear thread context
+        draft = session.query(DraftLog).filter(
+            DraftLog.user_id == user.id,
+            DraftLog.thread_id == thread_id,
+            DraftLog.status == 'DRAFT'
+        ).first()
+        
+        if draft:
+            draft.thread_context = None
+            draft.status = 'SENT'
+            draft.last_updated_at = datetime.now(timezone.utc)
+            draft.gmail_draft_id = gmail_draft_id
+            session.commit()
+            _logger.info(f"Thread context deleted for thread {thread_id}")
+            return True
+        return False
+    except Exception as e:
+        session.rollback()
+        _logger.error(f"Error deleting thread context: {str(e)}")
+        return False
+    finally:
+        session.close()
+
+
+def get_thread_context(user_email: str, thread_id: str) -> list:
+    """Get saved thread context from database."""
+    session = get_db_session()
+    try:
+        user = session.query(User).filter(User.email == user_email).first()
+        if not user:
+            _logger.warning(f"User not found: {user_email}")
+            return []
+        
+        # Find draft with thread context
+        draft = session.query(DraftLog).filter(
+            DraftLog.user_id == user.id,
+            DraftLog.thread_id == thread_id,
+            DraftLog.status == 'DRAFT'
+        ).first()
+        
+        if draft and draft.thread_context:
+            _logger.info(f"Thread context retrieved for thread {thread_id}")
+            return draft
+        
+        _logger.info(f"No thread context found for thread {thread_id}")
+        return []
+    except Exception as e:
+        _logger.error(f"Error retrieving thread context: {str(e)}")
+        return []
+    finally:
+        session.close()

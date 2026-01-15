@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draftly | AI Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .vh-90 {
+            height: 90vh;
+        }
+
+        .scroll-area {
+            overflow-y: auto;
+            height: calc(100% - 100px);
+        }
+
+        .email-item:hover {
+            background-color: #f8f9fa;
+            cursor: pointer;
+            border-left: 4px solid #0d6efd;
+        }
+
+        .thread-bubble {
+            border-radius: 15px;
+            padding: 12px;
+            margin-bottom: 10px;
+            max-width: 85%;
+        }
+
+        .bubble-in {
+            background-color: #e9ecef;
+            align-self: flex-start;
+        }
+
+        .bubble-out {
+            background-color: #d1e7ff;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        /* Thread content specific styling */
+        #thread-content {
+            max-height: calc(90vh - 120px);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        #thread-content p {
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-dark px-4 shadow-sm">
+        <a class="navbar-brand fw-bold" href="#"><i class="bi bi-robot me-2"></i>Draftly</a>
+        <div class="ms-auto d-flex gap-2">
+            <button id="auth-btn" class="btn btn-primary btn-sm px-4" onclick="handleAuth()">Login</button>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-3">
+        <div class="row vh-90 g-3">
+
+            <div class="col-md-3">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <button id="sync-btn" class="btn btn-primary w-100 mb-2 fw-bold" onclick="syncEmails()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Sync Emails
+                        </button>
+                        <div class="text-center mb-3">
+                            <small class="text-muted" style="font-size: 0.75rem;">
+                                Last synced: <span id="last-sync-time">Never</span>
+                            </small>
+                        </div>
+
+                        <h6 class="text-muted small fw-bold mb-3">UNREAD EMAILS</h6>
+                        <div id="email-list" class="list-group scroll-area border-0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm d-flex flex-column">
+                    <div class="card-header bg-white border-0 py-3 flex-shrink-0">
+                        <h5 id="view-subject" class="mb-1 text-truncate">Select an email</h5>
+                        <div id="view-meta" class="text-muted small"></div>
+                    </div>
+                    <div id="thread-content" class="card-body flex-grow-1 bg-light"
+                        style="overflow-y: auto; overflow-x: hidden; max-height: calc(90vh - 120px);">
+                        <div class="text-center text-muted mt-5">Select an email to view thread context</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-5">
+                <div class="card h-100 shadow-sm border-primary" style="border-width: 2px;">
+                    <div class="card-body d-flex flex-column" style="max-height: 100%;">
+                        <h5 class="card-title mb-3">
+                            <i class="bi bi-stars text-primary me-2"></i>AI Suggested Reply
+                            <br><small class="text-muted" style="font-size: 0.75rem; font-weight: normal;">
+                                (Edit the draft as needed before sending)
+                            </small>
+                        </h5>
+                        <div id="ai-draft-body" class="border rounded p-3 mb-3 flex-grow-1" contenteditable="true"
+                            style="overflow-y: auto; overflow-x: hidden; max-height: calc(100vh - 300px); background-color: #ffffff; cursor: text;">
+                            <div class="text-muted">AI draft will appear here...</div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-7">
+                                <button id="send-btn" class="btn btn-success w-100 py-2 fw-bold"
+                                    onclick="approveAndSend()">
+                                    Approve and Send Email
+                                </button>
+                            </div>
+                            <div class="col-5">
+                                <button id="draft-btn" class="btn btn-secondary w-100 py-2 fw-bold"
+                                    onclick="draftEmail()">
+                                    Draft the email.
+                                </button>
+                            </div>
+                            <div class="col-5">
+                                <div class="dropdown">
+                                    <button id="regen-btn" class="btn btn-outline-secondary w-100 py-2 dropdown-toggle"
+                                        type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Regenerate
+                                    </button>
+                                    <ul class="dropdown-menu w-100">
+                                        <li><a class="dropdown-item" href="#"
+                                                onclick="regenerateDraft('Formal'); return false;">Formal
+                                                Tone</a></li>
+                                        <li><a class="dropdown-item" href="#"
+                                                onclick="regenerateDraft('Casual'); return false;">Casual
+                                                Tone</a></li>
+                                        <li><a class="dropdown-item" href="#"
+                                                onclick="regenerateDraft('Concise'); return false;">Short/Concise</a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="modal fade" id="sessionExpiredModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Session Expired</h5>
+                </div>
+                <div class="modal-body py-4 text-center">
+                    <p class="lead">Your connection to Google has timed out or been revoked.</p>
+                    <p class="text-muted">To keep your data secure, you must sign in again to continue generating
+                        drafts.</p>
+                </div>
+                <div class="modal-footer justify-content-center border-0 pb-4">
+                    <button type="button" class="btn btn-primary px-5 fw-bold" onclick="restartAuthFlow()">
+                        <i class="bi bi-google me-2"></i>Sign In with Google
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="/ui/js/main.js"></script>
+
+</body>
+
+</html>
