@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  draftly-app:
+    build: .
+    container_name: draftly-app
+    ports:
+      - "8000:8000"
+    environment:
+      # Required environment variables - set these in .env file or here
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL_NAME=${GROQ_MODEL_NAME:-llama-3.3-70b-versatile}
+      - GAPI=${GAPI:-https://www.googleapis.com/}
+      - GMAIL_SCOPES=${GMAIL_SCOPES:-auth/gmail.modify,auth/gmail.readonly,auth/userinfo.email,auth/userinfo.profile,openid}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@draftly-db:5432/draftly}
+    depends_on:
+      - draftly-db
+    volumes:
+      # Mount resources folder for client secrets
+      - ./resources:/app/resources:ro
+      # Optional: mount .env file
+      - ./.env:/app/.env:ro
+    networks:
+      - draftly-network
+    restart: unless-stopped
+
+  draftly-db:
+    image: postgres:15-alpine
+    container_name: draftly-db
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-draftly}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - draftly-network
+    restart: unless-stopped
+
+networks:
+  draftly-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
