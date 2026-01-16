@@ -91,6 +91,8 @@ test_*.py
 todo.txt
 *.tmp
 *.bak
+resources/*.json
+
 
 # Sensitive - exclude by default (mount as volume instead)
 # Uncomment the line below if you want to exclude client secrets

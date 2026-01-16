@@ -12,7 +12,7 @@ services:
       - GROQ_MODEL_NAME=${GROQ_MODEL_NAME:-llama-3.3-70b-versatile}
       - GAPI=${GAPI:-https://www.googleapis.com/}
       - GMAIL_SCOPES=${GMAIL_SCOPES:-auth/gmail.modify,auth/gmail.readonly,auth/userinfo.email,auth/userinfo.profile,openid}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@draftly-db:5432/draftly}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://POSTGRES_USER:POSTGRES_PASSWORD@draftly-db:5432/POSTGRES_DB}
     depends_on:
       - draftly-db
     volumes:
@@ -29,7 +29,7 @@ services:
     container_name: draftly-db
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dbpass}
       - POSTGRES_DB=${POSTGRES_DB:-draftly}
     ports:
       - "5432:5432"
