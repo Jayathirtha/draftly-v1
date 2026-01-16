@@ -122,43 +122,56 @@ pip install -e ".[testing]"
 # Run all tests
 pytest
 
-# Run with coverage
-pytest --cov=draftly_v1 --cov-report=html
-
-# Run specific test file
-pytest tests/test_auth_routes.py
-
-# Run with verbose output
-pytest -v
 ```
 
-### Test Structure
+# Draftly Setup Guide
 
-```
-tests/
-├── conftest.py                    # Pytest fixtures
-├── test_auth_routes.py            # Authentication tests
-├── test_database.py               # Database operations tests
-├── test_email_services.py         # Email service tests
-├── test_gmail_services.py         # Gmail API tests
-└── test_session_management.py     # Session management tests
-```
+## Prerequisites
 
-## 🐳 Docker Setup
+1. Docker and Docker Compose installed
+2. Google Cloud account
+3. GROQ API key
+4. create .env file with required environment variables
 
-### Prerequisites
 
-- Docker Desktop installed
-- Google OAuth 2.0 credentials (client_secret.json)
-- Groq API key
+## Step 1: Get Google OAuth Credentials
 
-### Quick Start
+   1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+   2. Create a new project or select existing one
+   3. Enable **Gmail API**:
+      * Go to "APIs & Services" > "Library"
+      * Search for "Gmail API"
+      * Click "Enable"
+   4. provide consent by creating the app.
+	
+	   1. Create OAuth 2.0 Credentials:
+	   * Go to "APIs & Services" > "Credentials"
+	   * Choose "Web application"
+	   * Click "Create Credentials" > "OAuth client ID"
+	   * Add Authorized redirect URIs:
+      ```
+       http://localhost:8000/auth/callback
+      ```
+	   * Click "Create"
 
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd draftly-v1
-   ```
+   2. add test user
+	   * Go to "audience" > "Test users" 
+	   * add upto 100 gmail id to test
+	   * now oauth can be provided to only test user list
+
+   5. Download the JSON file:
+      * Click the download button next to your credential
+      * Rename it to `client_secret.json`
+
+## Step 2: Project Structure to run with docker
+
+Create this folder structure to run the app via docker compose:
+
+your-project-folder/
+├── docker-compose.yml
+├── .env
+└── resources/
+	└── client_secret.json ← Place your downloaded file here with exact name
 
 2. **Configure environment variables**
    
@@ -177,60 +190,24 @@ tests/
     # note: db should be created manually
    ```
 
-3. ## Setting Up OAuth Credentials  and running app
-
-	1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-	2. Create a new project or select existing
-	3. Enable Gmail API
-	4. Create OAuth 2.0 credentials
-	5. Download the JSON file
-	6. Place it in `resources/client_secret_YOUR_PROJECT.json`
-	7. Create a `.env` file in the project root
-	8. Run: `docker-compose up -d`
- 	9. open url: http://localhost:8000/login to use the app. 
 
 
-
-4. **Build and run with Docker Compose**
+3. **Build and run with Docker Compose**
    ```bash
+
+   # pull docker image
+   docker pull jayathirthawa/draftly-app:latest
+
    # Build and start all services
    docker-compose up -d
-   
-   # View logs
-   docker-compose logs -f draftly-app
-   
-   # Stop services
-   docker-compose down
-   
-   # Stop and remove volumes (clean reset)
-   docker-compose down -v
+
    ```
 
 5. **Access the application**
    - Frontend: http://localhost:8000/ui
    - Login: http://localhost:8000/ui/login
 
-### Docker Commands Reference
 
-```bash
-# Rebuild after code changes
-docker-compose build --no-cache
-
-# View running containers
-docker-compose ps
-
-# Execute commands in container
-docker-compose exec draftly-app python --version
-
-# View database logs
-docker-compose logs draftly-db
-
-# Restart a specific service
-docker-compose restart draftly-app
-
-# Remove everything (containers, networks, volumes)
-docker-compose down -v --remove-orphans
-```
 
 ### Troubleshooting
 
@@ -241,16 +218,6 @@ DATABASE_URL=postgresql://postgres:password@draftly-db:5432/draftly
 
 # Reset database
 docker-compose down -v
-docker-compose up -d
-```
-
-**Application not starting:**
-```bash
-# Check logs
-docker-compose logs draftly-app
-
-# Rebuild without cache
-docker-compose build --no-cache
 docker-compose up -d
 ```
 

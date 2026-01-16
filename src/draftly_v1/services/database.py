@@ -75,7 +75,7 @@ def get_creds_from_db(email: str,) -> dict:
         
         # Get client secrets from the JSON file
         BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
-        CLIENT_SECRETS_FILE = BASE_DIR / "resources" / "client_secret_695824097654-6bmqmtgpd8t23tkve76kvmje9u0fga9f.apps.googleusercontent.com.json"
+        CLIENT_SECRETS_FILE = BASE_DIR / "resources" / "client_secret.json"
         
         if not CLIENT_SECRETS_FILE.exists():
             raise FileNotFoundError(f"Client secrets file not found at: {CLIENT_SECRETS_FILE}")
