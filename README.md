@@ -168,7 +168,7 @@ pytest
 Create this folder structure to run the app via docker compose:
 
 your-project-folder/
-├── docker-compose.yml
+├── docker-compose.yml # copy from the repo
 ├── .env
 └── resources/
 	└── client_secret.json ← Place your downloaded file here with exact name
