@@ -130,7 +130,7 @@ pytest
 
 1. Docker and Docker Compose installed
 2. Google Cloud account
-3. GROQ API key
+3. [GROQ API key](https://console.groq.com/login)
 4. create .env file with required environment variables
 
 
