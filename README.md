@@ -121,7 +121,6 @@ pip install -e ".[testing]"
 
 # Run all tests
 pytest
-
 ```
 
 # Draftly Setup Guide
